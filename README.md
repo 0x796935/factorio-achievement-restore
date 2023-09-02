@@ -15,7 +15,7 @@ Factorio Achievement Restore is a tool created by 0x796935 based on the research
 5. Pick number of savegame and enjoy.
 6. ([Check if Achievements are enabled](https://www.reddit.com/r/factorio/comments/qq77n5/comment/hjy9bgq/?utm_source=share&utm_medium=web2x&context=3))
 
-![Screenshot](/screen.png)
+![Screenshot](/screen_new.png)
 
 ### License
 
