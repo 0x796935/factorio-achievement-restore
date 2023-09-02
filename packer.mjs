@@ -119,8 +119,8 @@ async function main() {
       // zip savegame
       // move folder from savegame to savegame_changed
       await fs.renameSync(`./temp/${savegame.replace('.zip', '')}`, `./temp/${savegame.replace('.zip', '')}_changed`);
-      // remove old zip -> wont be zipped anyways
-      // await fs.rmSync(`./temp/savegame.zip`);
+      // remove old zip
+      await fs.rmSync(`./temp/savegame.zip`);
 
       await zipFolder(`./temp`, `${process.env.APPDATA}/Factorio/saves/${savegame.replace('.zip', '')}_changed.zip`);
       console.log(`[+] Zipping savegame to .../saves/${savegame.replace('.zip', '')}_changed.zip`)
