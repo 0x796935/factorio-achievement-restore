@@ -4,6 +4,7 @@ import fs from 'fs';
 import { createInterface } from 'readline';
 import extract from 'extract-zip'
 import archiver from 'archiver'
+import path from 'path';
 
 // Thanks to u/KimJonhUnsSon which posted a solution for this on reddit
 // https://www.reddit.com/r/factorio/comments/rlprxh/text_tutorial_for_reenabling_achievements_after/
@@ -34,7 +35,20 @@ function zipFolder(sourceFolder, targetZip) {
 
 // let user pick a savegame from %appdata%/Factorio/saves/*.zip
 async function main() {
-  var savegames = fs.readdirSync(`${process.env.APPDATA}/Factorio/saves/`);
+  var gamePath = '';
+  switch(process.platform) {
+    case 'linux':
+      gamePath = path.join(process.env.HOME, '.factorio');
+      break;
+    case 'win32':
+      gamePath = path.join(process.env.APPDATA, 'Factorio');
+      break;
+    case 'darwin':
+      gamePath = path.join(process.env.HOME, 'Library', 'Application Support', 'factorio')
+      break;
+  }
+  
+  var savegames = fs.readdirSync(path.join(gamePath, 'saves'));
   savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
 
   console.log('Pick a savegame to unpack:');
@@ -68,7 +82,7 @@ async function main() {
       
       // clear temp folder
     } catch(e) {}
-    await fs.copyFileSync(`${process.env.APPDATA}/Factorio/saves/${savegame}`, './temp/savegame.zip');
+    await fs.copyFileSync(path.join(gamePath, 'saves', `${savegame}`), './temp/savegame.zip');
 
     // unzip savegame
     const scriptDirectoryPath = fs.realpathSync(process.cwd()); 
@@ -122,7 +136,7 @@ async function main() {
       // remove old zip
       await fs.rmSync(`./temp/savegame.zip`);
 
-      await zipFolder(`./temp`, `${process.env.APPDATA}/Factorio/saves/${savegame.replace('.zip', '')}_changed.zip`);
+      await zipFolder(`./temp`, path.join(gamePath, 'saves', `${savegame.replace('.zip', '')}_changed.zip`));
       console.log(`[+] Zipping savegame to .../saves/${savegame.replace('.zip', '')}_changed.zip`)
       console.log(`[+] Enjoy your achievements!`)
 
