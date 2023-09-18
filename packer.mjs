@@ -166,31 +166,57 @@ async function removeCheatFromSavegame() {
       // convert hex to ansii string 
       const outputString = hex.match(/.{1,2}/g).map(byte => String.fromCharCode(parseInt(byte, 16))).join('');
 
-      // console.log(outputString)
-        if(outputString.includes('command-ran')) {
-        console.log(`[!] Found command in ${file}`)
 
-        // search all hex of: "FF FF 00 01 00"
-        // search hex 
-        // while hexBuffer has 0xFF 0xFF 0x00 0x01 0x00\
-        var changedCount = 0
-        while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00])) !== -1) {
-            // replace the 0x01 with 0x00 in the hexBuffer 
-            const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00]))
-            console.log(`[+] Removed cheat flag from offset ${offset}`)
-            hexBuffer[offset + 3] = 0x00
-            changedCount++
-        }
-        if (changedCount === 0) {
-          console.log('[/] No changes made to file')
-          continue;
-        }
-        // convert hexBuffer back to Uint8Array
-        output = Uint8Array.from(hexBuffer)
+      var changedCount = 0
+
+
+      // NOT THE REASON FOR issue #2:
+      // https://github.com/0x796935/factorio-achievement-restore/issues/2
+
+      // const fakeBuffer = hexBuffer;
+      // let allOffsets = [];
+      // while(fakeBuffer.indexOf(Buffer.from([0x63, 0x6F, 0x6D, 0x6D, 0x61, 0x6E, 0x64])) !== -1) {
+      //   const offset = fakeBuffer.indexOf(Buffer.from([0x63, 0x6F, 0x6D, 0x6D, 0x61, 0x6E, 0x64]));
+      //   allOffsets.push(offset);
+      //   fakeBuffer[offset] = 0x00;
+      // }
+      // console.log(allOffsets);
+
+      // for(let offset of allOffsets) {
+      //   // if 01 xx 63 6F 6D 6D 61 6E 64 2D 72 61 6E
+      //   // then change to
+      //   // 00 xx 63 6F 6D 6D 61 6E 64 2D 72 61 6E
+      //   if(hexBuffer[offset-2] === 0x01) {
+      //     console.log(`[+] Removed cheat flag from offset ${offset}`)
+      //     hexBuffer[offset-2] = 0x00
+      //     hexBuffer[offset] = 0x63 // setting back c for some reason
+      //     changedCount++
+
+      //   }
+        
+      // }
+
+      if(!outputString.includes('command-ran'))
+        continue;
+
+      console.log(`[!] Found command in ${file}`)
+
+      // search all hex of: "FF FF 00 01 00"
+      // search hex 
+      // while hexBuffer has 0xFF 0xFF 0x00 0x01 0x00
+      while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00])) !== -1) {
+          // replace the 0x01 with 0x00 in the hexBuffer 
+          const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00]))
+          console.log(`[+] Removed cheat flag from offset ${offset}`)
+          hexBuffer[offset + 3] = 0x00
+          changedCount++
       }
-      else {
+      if (changedCount === 0) {
+        console.log('[/] No changes made to file')
         continue;
       }
+      // convert hexBuffer back to Uint8Array
+      output = Uint8Array.from(hexBuffer)
 
       // pako deflate and write to ./output/*
       output = pako.deflate(output)
