@@ -1,3 +1,4 @@
+# WARNING: Doesn't work twice (no clue why)
 ## Factorio Achievement Restore Readme
 
 Factorio Achievement Restore is a tool created by 0x796935 based on the research/method of u/KimJonhUnsSon on [Reddit](https://www.reddit.com/r/factorio/comments/rlprxh/text_tutorial_for_reenabling_achievements_after/). This tool helps you restore achievements in Factorio after using console commands or mods.
