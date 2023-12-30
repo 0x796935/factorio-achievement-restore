@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "node packer.mjs"
+  },
   "dependencies": {
     "archiver": "^6.0.0",
     "extract-zip": "^2.0.1"
