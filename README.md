@@ -12,7 +12,7 @@ Factorio Achievement Restore is a tool created by 0x796935 based on the research
 1. Clone the repository or download the source code.
 2. Open a terminal/command prompt in the project directory.
 3. Run `npm install` to install the required dependencies.
-4. Run `node packer.mjs` to execute the script.
+4. Run `npm start` to execute the tool.
 5. Pick number of savegame and enjoy.
 6. ([Check if Achievements are enabled](https://www.reddit.com/r/factorio/comments/qq77n5/comment/hjy9bgq/?utm_source=share&utm_medium=web2x&context=3))
 
