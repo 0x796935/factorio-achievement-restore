@@ -150,12 +150,21 @@ async function main() {
   });
 }
 
+function getAllIndexes(arr, val) {
+  var indexes = [], i = -1;
+  while ((i = arr.indexOf(val, i+1)) != -1){
+      indexes.push(i);
+  }
+  return indexes;
+}
+
 async function removeCheatFromSavegame() {
   return new Promise((resolve, reject) => {
 
     const files = fs.readdirSync('./input');
 
     for (const file of files) {
+      console.log(`starting to read file ${file}`)
       // use pako.inflate
       const input = fs.readFileSync(`./input/${file}`);
       var output = pako.inflate(input);
@@ -211,6 +220,21 @@ async function removeCheatFromSavegame() {
           hexBuffer[offset + 3] = 0x00
           changedCount++
       }
+      
+      // Secondary Check for space age 
+      // Look for 32 F's then find the 01 that should be at 
+      const offsetArray = getAllIndexes(hexBuffer,Buffer.from([0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]));
+
+      if(offsetArray?.length > 0){
+        offsetArray.forEach(offset => {
+          if(hexBuffer[offset - 11] == 0x01){
+            console.log(`[+] Removed space cheat flag from offset ${offset}`)
+            hexBuffer[offset - 11] = 0x00
+            changedCount++
+          }
+        });
+      }
+
       if (changedCount === 0) {
         console.log('[/] No changes made to file')
         continue;
