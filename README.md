@@ -25,7 +25,10 @@ This project is licensed under the GNU General Public License v3.0.
 
 ### Acknowledgments
 
-- u/KimJonhUnsSon for the research and method
+- u/KimJonhUnsSon on Reddit for the research and method
+- [rezarria](https://github.com/rezarria) for adding Linux/OSX support
+- [alvarocastro](https://github.com/alvarocastro) for adding npm start script
+- [pooreboy](https://github.com/pooreboy) for adding the spaceage update
 
 ### Disclaimer
 
