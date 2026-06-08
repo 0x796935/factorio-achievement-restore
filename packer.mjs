@@ -48,8 +48,22 @@ async function main() {
       break;
   }
   
-  var savegames = fs.readdirSync(path.join(gamePath, 'saves'));
-  savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
+  var savegames;
+  try
+  {
+    // if save location supported from the switch statement
+    savegames = fs.readdirSync(path.join(gamePath, 'saves'));
+    savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
+  } 
+  catch(e)
+  {
+    // if save location not supported from switch statement
+    var customPath = await getCustomPath();
+    console.log('');
+    savegames = fs.readdirSync(customPath);
+    savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
+    gamePath = customPath;
+  }
 
   console.log('Pick a savegame to unpack:');
   for (let i = 0; i < savegames.length; i++) {
@@ -250,6 +264,21 @@ async function removeCheatFromSavegame() {
     }
     resolve();
   });
+}
+
+async function getCustomPath() {
+  console.log('[*]Unable to find factorio save(s)');
+  console.log('[*]Please specify path to saves folder');
+  console.log('');
+  const readline = createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise(resolve => readline.question(`PATH: `, path => {
+    readline.close();
+    resolve(path);
+  }))
 }
 
 main();
