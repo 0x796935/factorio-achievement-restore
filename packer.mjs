@@ -2,9 +2,37 @@
 import pako from './pako.js';
 import fs from 'fs';
 import { createInterface } from 'readline';
-import extract from 'extract-zip'
+import yauzl from 'yauzl'
 import archiver from 'archiver'
 import path from 'path';
+
+// Unzip a Factorio save (`zipPath`) into `destDir`, writing every entry to disk.
+function extractZip(zipPath, destDir) {
+  return new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zip) => {
+      if (err) return reject(err);
+      zip.on('error', reject);
+      zip.on('end', resolve);
+      zip.on('entry', (entry) => {
+        const outPath = path.join(destDir, entry.fileName);
+        if (entry.fileName.endsWith('/')) { fs.mkdirSync(outPath, { recursive: true }); return zip.readEntry(); }
+        fs.mkdirSync(path.dirname(outPath), { recursive: true });
+        const stored = entry.compressionMethod === 0;
+        zip.openReadStream(entry, stored ? {} : { decompress: false }, (e, rs) => {
+          if (e) return reject(e);
+          const parts = [];
+          rs.on('data', (c) => parts.push(c));
+          rs.on('end', () => {
+            const raw = Buffer.concat(parts);
+            fs.writeFileSync(outPath, stored ? raw : Buffer.from(pako.inflateRaw(raw)));
+            zip.readEntry();
+          });
+        });
+      });
+      zip.readEntry();
+    });
+  });
+}
 
 // Thanks to u/KimJonhUnsSon which posted a solution for this on reddit
 // https://www.reddit.com/r/factorio/comments/rlprxh/text_tutorial_for_reenabling_achievements_after/
@@ -54,7 +82,7 @@ async function main() {
     // if save location supported from the switch statement
     savegames = fs.readdirSync(path.join(gamePath, 'saves'));
     savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
-  } 
+  }
   catch(e)
   {
     // if save location not supported from switch statement
@@ -101,7 +129,7 @@ async function main() {
     // unzip savegame
     const scriptDirectoryPath = fs.realpathSync(process.cwd()); 
 
-    await extract('./temp/savegame.zip', { dir: scriptDirectoryPath+'/temp' })
+    await extractZip('./temp/savegame.zip', scriptDirectoryPath+'/temp')
 
     // copy all "*.dat{0-9}[0-9]" files to input folder
     var files = await fs.readdirSync(`./temp/${savegame.replace('.zip', '')}`);
