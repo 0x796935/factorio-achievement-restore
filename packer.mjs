@@ -63,8 +63,8 @@ function zipFolder(sourceFolder, targetZip) {
 
 // let user pick a savegame from %appdata%/Factorio/saves/*.zip
 async function main() {
-  var gamePath = '';
-  var savesPath = '';
+  let gamePath = '';
+  let savesPath = '';
   switch(process.platform) {
     case 'linux':
       gamePath = path.join(process.env.HOME, '.factorio');
@@ -214,24 +214,24 @@ async function removeCheatFromSavegame() {
       try {
         output = pako.inflate(input);
         compressionType = 'zlib';
-      } catch (_) {
+      } catch (zlibErr) {
         try {
           output = pako.inflateRaw(input);
           compressionType = 'raw';
-        } catch (_2) {
+        } catch (rawErr) {
           // Not compressed — use data as-is
           output = input;
           compressionType = 'none';
         }
       }
 
-      var hexBuffer = Buffer.from(output)
+      let hexBuffer = Buffer.from(output)
       const hex = hexBuffer.toString('hex');
       // convert hex to ascii string
       const outputString = hex.match(/.{1,2}/g).map(byte => String.fromCharCode(parseInt(byte, 16))).join('');
 
 
-      var changedCount = 0
+      let changedCount = 0
 
       if(!outputString.includes('command-ran')) {
         continue;
