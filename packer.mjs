@@ -63,16 +63,20 @@ function zipFolder(sourceFolder, targetZip) {
 
 // let user pick a savegame from %appdata%/Factorio/saves/*.zip
 async function main() {
-  var gamePath = '';
+  let gamePath = '';
+  let savesPath = '';
   switch(process.platform) {
     case 'linux':
       gamePath = path.join(process.env.HOME, '.factorio');
+      savesPath = path.join(gamePath, 'saves');
       break;
     case 'win32':
       gamePath = path.join(process.env.APPDATA, 'Factorio');
+      savesPath = path.join(gamePath, 'saves');
       break;
     case 'darwin':
-      gamePath = path.join(process.env.HOME, 'Library', 'Application Support', 'factorio')
+      gamePath = path.join(process.env.HOME, 'Library', 'Application Support', 'factorio');
+      savesPath = path.join(gamePath, 'saves');
       break;
   }
   
@@ -80,7 +84,7 @@ async function main() {
   try
   {
     // if save location supported from the switch statement
-    savegames = fs.readdirSync(path.join(gamePath, 'saves'));
+    savegames = fs.readdirSync(savesPath);
     savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
   }
   catch(e)
@@ -88,9 +92,9 @@ async function main() {
     // if save location not supported from switch statement
     var customPath = await getCustomPath();
     console.log('');
-    savegames = fs.readdirSync(customPath);
+    savesPath = customPath;
+    savegames = fs.readdirSync(savesPath);
     savegames = savegames.filter(file => file.toLowerCase().endsWith('.zip'));
-    gamePath = customPath;
   }
 
   console.log('Pick a savegame to unpack:');
@@ -124,7 +128,7 @@ async function main() {
       
       // clear temp folder
     } catch(e) {}
-    await fs.copyFileSync(path.join(gamePath, 'saves', `${savegame}`), './temp/savegame.zip');
+    await fs.copyFileSync(path.join(savesPath, `${savegame}`), './temp/savegame.zip');
 
     // unzip savegame
     const scriptDirectoryPath = fs.realpathSync(process.cwd()); 
@@ -178,7 +182,7 @@ async function main() {
       // remove old zip
       await fs.rmSync(`./temp/savegame.zip`);
 
-      await zipFolder(`./temp`, path.join(gamePath, 'saves', `${savegame.replace('.zip', '')}_changed.zip`));
+      await zipFolder(`./temp`, path.join(savesPath, `${savegame.replace('.zip', '')}_changed.zip`));
       console.log(`[+] Zipping savegame to .../saves/${savegame.replace('.zip', '')}_changed.zip`)
       console.log(`[+] Enjoy your achievements!`)
 
@@ -192,104 +196,99 @@ async function main() {
   });
 }
 
-function getAllIndexes(arr, val) {
-  var indexes = [], i = -1;
-  while ((i = arr.indexOf(val, i+1)) != -1){
-      indexes.push(i);
-  }
-  return indexes;
-}
-
 async function removeCheatFromSavegame() {
   return new Promise((resolve, reject) => {
 
     const files = fs.readdirSync('./input');
+    let foundCommandRan = false;
 
     for (const file of files) {
       console.log(`starting to read file ${file}`)
-      // use pako.inflate
-      const input = fs.readFileSync(`./input/${file}`);
-      var output = pako.inflate(input);
 
-      // hex dump output to console
-      var hexBuffer = Buffer.from(output)
+      const input = fs.readFileSync(`./input/${file}`);
+
+      // Determine the compression method used for the dat file content so we
+      // can recompress with the same method after patching.
+      let output;
+      let compressionType;
+      try {
+        output = pako.inflate(input);
+        compressionType = 'zlib';
+      } catch (zlibErr) {
+        try {
+          output = pako.inflateRaw(input);
+          compressionType = 'raw';
+        } catch (rawErr) {
+          // Not compressed — use data as-is
+          output = input;
+          compressionType = 'none';
+        }
+      }
+
+      let hexBuffer = Buffer.from(output)
       const hex = hexBuffer.toString('hex');
-      // convert hex to ansii string 
+      // convert hex to ascii string
       const outputString = hex.match(/.{1,2}/g).map(byte => String.fromCharCode(parseInt(byte, 16))).join('');
 
 
-      var changedCount = 0
+      let changedCount = 0
 
-
-      // NOT THE REASON FOR issue #2:
-      // https://github.com/0x796935/factorio-achievement-restore/issues/2
-
-      // const fakeBuffer = hexBuffer;
-      // let allOffsets = [];
-      // while(fakeBuffer.indexOf(Buffer.from([0x63, 0x6F, 0x6D, 0x6D, 0x61, 0x6E, 0x64])) !== -1) {
-      //   const offset = fakeBuffer.indexOf(Buffer.from([0x63, 0x6F, 0x6D, 0x6D, 0x61, 0x6E, 0x64]));
-      //   allOffsets.push(offset);
-      //   fakeBuffer[offset] = 0x00;
-      // }
-      // console.log(allOffsets);
-
-      // for(let offset of allOffsets) {
-      //   // if 01 xx 63 6F 6D 6D 61 6E 64 2D 72 61 6E
-      //   // then change to
-      //   // 00 xx 63 6F 6D 6D 61 6E 64 2D 72 61 6E
-      //   if(hexBuffer[offset-2] === 0x01) {
-      //     console.log(`[+] Removed cheat flag from offset ${offset}`)
-      //     hexBuffer[offset-2] = 0x00
-      //     hexBuffer[offset] = 0x63 // setting back c for some reason
-      //     changedCount++
-
-      //   }
-        
-      // }
-
-      if(!outputString.includes('command-ran'))
+      if(!outputString.includes('command-ran')) {
         continue;
+      }
 
+      foundCommandRan = true;
       console.log(`[!] Found command in ${file}`)
 
-      // search all hex of: "FF FF 00 01 00"
-      // search hex 
-      // while hexBuffer has 0xFF 0xFF 0x00 0x01 0x00
+      // Primary pattern: cheat / command-ran flag (Map+0x22f in the Factorio
+      // binary, confirmed on Factorio 2.0.x by binary analysis).
+      // Context bytes "FF FF 00" immediately precede the flag byte 0x01.
       while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00])) !== -1) {
-          // replace the 0x01 with 0x00 in the hexBuffer 
           const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00]))
-          console.log(`[+] Removed cheat flag from offset ${offset}`)
+          console.log(`[+] Removed cheat flag (command/cheat) from offset ${offset}`)
           hexBuffer[offset + 3] = 0x00
           changedCount++
       }
-      
-      // Secondary Check for space age 
-      // Look for 32 F's then find the 01 that should be at 
-      const offsetArray = getAllIndexes(hexBuffer,Buffer.from([0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]));
 
-      if(offsetArray?.length > 0){
-        offsetArray.forEach(offset => {
-          if(hexBuffer[offset - 11] == 0x01){
-            console.log(`[+] Removed space cheat flag from offset ${offset}`)
-            hexBuffer[offset - 11] = 0x00
-            changedCount++
-          }
-        });
+      // Secondary pattern: editor-used flag (Map+0x230 in the Factorio binary,
+      // one byte after the command/cheat flag).
+      // Context bytes "FF FF 01" precede the editor flag byte 0x01.
+      while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x01, 0x01, 0x00])) !== -1) {
+          const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x01, 0x01, 0x00]))
+          console.log(`[+] Removed cheat flag (editor) from offset ${offset}`)
+          hexBuffer[offset + 3] = 0x00
+          changedCount++
       }
 
       if (changedCount === 0) {
-        console.log('[/] No changes made to file')
+        console.log('[/] No cheat flag bytes found in file — save may already be clean, or the format has changed in this Factorio version.')
         continue;
       }
       // convert hexBuffer back to Uint8Array
       output = Uint8Array.from(hexBuffer)
 
-      // pako deflate and write to ./output/*
-      output = pako.deflate(output)
+      // Recompress using the same method as the original file
+      if (compressionType === 'zlib') {
+        output = pako.deflate(output)
+      } else if (compressionType === 'raw') {
+        output = pako.deflateRaw(output)
+      }
+      // compressionType === 'none': keep uncompressed output as-is
 
       console.log(`[+] Wrote ${file} to ./output/${file}`)
       fs.writeFileSync(`./output/${file}`, output)
     }
+
+    if (!foundCommandRan) {
+      console.log('')
+      console.log('[!] Warning: No "command-ran" marker was found in any level.dat file.')
+      console.log('[!] This usually means one of:')
+      console.log('[!]   1. You used /editor or /cheat instead of /c (not supported yet)')
+      console.log('[!]   2. The command log has scrolled out of the current save chunks')
+      console.log('[!] Workaround: load the save in-game, run any /c command (e.g.')
+      console.log('[!]   /c game.player.print("test")), save again, then re-run this tool.')
+    }
+
     resolve();
   });
 }
