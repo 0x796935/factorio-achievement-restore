@@ -243,20 +243,20 @@ async function removeCheatFromSavegame() {
       // Primary pattern: cheat / command-ran flag (Map+0x22f in the Factorio
       // binary, confirmed on Factorio 2.0.x by binary analysis).
       // Context bytes "FF FF 00" immediately precede the flag byte 0x01.
-      while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00])) !== -1) {
-          const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00]))
+      while(hexBuffer.indexOf(Buffer.from([0x39, 0x04, 0x00, 0x00, 0x00, 0x01])) !== -1) {
+          const offset = hexBuffer.indexOf(Buffer.from([0x39, 0x04, 0x00, 0x00, 0x00, 0x01]))
           console.log(`[+] Removed cheat flag (command/cheat) from offset ${offset}`)
-          hexBuffer[offset + 3] = 0x00
+          hexBuffer[offset + 5] = 0x00
           changedCount++
       }
 
       // Secondary pattern: editor-used flag (Map+0x230 in the Factorio binary,
       // one byte after the command/cheat flag).
       // Context bytes "FF FF 01" precede the editor flag byte 0x01.
-      while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x01, 0x01, 0x00])) !== -1) {
-          const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x01, 0x01, 0x00]))
-          console.log(`[+] Removed cheat flag (editor) from offset ${offset}`)
-          hexBuffer[offset + 3] = 0x00
+      while(hexBuffer.indexOf(Buffer.from([0x39, 0x04, 0x00, 0x00, 0x00, 0x01])) !== -1) {
+          const offset = hexBuffer.indexOf(Buffer.from([0x39, 0x04, 0x00, 0x00, 0x00, 0x01]))
+          console.log(`[+] Removed cheat flag (command/cheat) from offset ${offset}`)
+          hexBuffer[offset + 5] = 0x00
           changedCount++
       }
 
