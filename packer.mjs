@@ -238,28 +238,32 @@ async function removeCheatFromSavegame() {
       }
 
       foundCommandRan = true;
+      const foundCommandRanString = Buffer.from("command-ran", "ascii");
+      const foundCommandOffset = hexBuffer.indexOf(foundCommandRanString);
       console.log(`[!] Found command in ${file}`)
 
       // Primary pattern: cheat / command-ran flag (Map+0x22f in the Factorio
       // binary, confirmed on Factorio 2.0.x by binary analysis).
-      // Context bytes "FF FF 00" immediately precede the flag byte 0x01.
-      while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00])) !== -1) {
-          const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x00, 0x01, 0x00]))
-          console.log(`[+] Removed cheat flag (command/cheat) from offset ${offset}`)
-          hexBuffer[offset + 3] = 0x00
-          changedCount++
+      // Context bytes 16 FF and then an offset of 11
+      const ffBlock = Buffer.alloc(16, 0xFF);
+      let ffOffset = -1;
+      for (let i = foundCommandOffset; i >= 16; i--) {
+        if (hexBuffer.subarray(i - 16, i).equals(ffBlock)) {
+          ffOffset = i - 16;
+          break;
+        }
       }
-
-      // Secondary pattern: editor-used flag (Map+0x230 in the Factorio binary,
-      // one byte after the command/cheat flag).
-      // Context bytes "FF FF 01" precede the editor flag byte 0x01.
-      while(hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x01, 0x01, 0x00])) !== -1) {
-          const offset = hexBuffer.indexOf(Buffer.from([0xFF, 0xFF, 0x01, 0x01, 0x00]))
-          console.log(`[+] Removed cheat flag (editor) from offset ${offset}`)
-          hexBuffer[offset + 3] = 0x00
-          changedCount++
+      if (ffOffset !== -1) {
+        const flagOffset = ffOffset - 11;
+        if (hexBuffer[flagOffset] === 0x01) {
+          console.log(`[+] Removed cheat flag (command/cheat) from offset ${flagOffset}`);
+          hexBuffer[flagOffset] = 0x00;
+          changedCount++;
+        }
+      } else {
+        console.log("[!] Invalid flag offset")
       }
-
+      
       if (changedCount === 0) {
         console.log('[/] No cheat flag bytes found in file — save may already be clean, or the format has changed in this Factorio version.')
         continue;
